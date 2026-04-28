@@ -6,8 +6,10 @@ class User(db.Model):
     __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    cart_items = db.relationship("CartItem", backref="user", lazy=True)
 
     # hash password
     def set_password(self, password):
@@ -16,4 +18,10 @@ class User(db.Model):
     # verify password
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-        
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "email": self.email,
+            "username": self.username
+        }    

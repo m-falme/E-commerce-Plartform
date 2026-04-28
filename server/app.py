@@ -1,5 +1,4 @@
 from flask import Flask
-from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import os
 from flask_migrate import Migrate
@@ -12,7 +11,6 @@ from routes.cart import cart_bp
 
 load_dotenv()
 
-jwt = JWTManager()
 
 
 def create_app():
@@ -27,7 +25,7 @@ def create_app():
 
     # EXTENSIONS
     db.init_app(app)
-    jwt.init_app(app)
+    # jwt.init_app(app)
 
     migrate = Migrate(app, db)
 

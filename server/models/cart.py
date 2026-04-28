@@ -1,8 +1,9 @@
 from extensions import db
 
 class CartItem(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    __tablename__ = "cart_items"
 
+    id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, nullable=False)
     product_id = db.Column(db.Integer, nullable=False)
     quantity = db.Column(db.Integer, default=1)
@@ -13,4 +14,5 @@ class CartItem(db.Model):
             "user_id": self.user_id,
             "product_id": self.product_id,
             "quantity": self.quantity
+            "product": self.product.to_dict() if self.product else None
         }
