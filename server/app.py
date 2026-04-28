@@ -4,8 +4,11 @@ from dotenv import load_dotenv
 import os
 from flask_migrate import Migrate
 from flask_cors import CORS
-from models import db
+from extensions import db
 from routes.auth import auth_bp   
+from routes.products import products_bp
+from routes.cart import cart_bp
+
 
 load_dotenv()
 
@@ -14,6 +17,10 @@ jwt = JWTManager()
 
 def create_app():
     app = Flask(__name__)
+
+    app.register_blueprint(cart_bp, url_prefix="/api/cart")
+    app.register_blueprint(products_bp, url_prefix="/api/products")
+
 
     CORS(app, resources={r"/*": {"origins": "*"}})
 
