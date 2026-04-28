@@ -5,7 +5,7 @@ db = SQLAlchemy()
 
 
 class User(db.Model):
-    _tablename_ = "users"
+    __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
 

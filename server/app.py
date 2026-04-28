@@ -18,27 +18,25 @@ jwt = JWTManager()
 def create_app():
     app = Flask(__name__)
 
-    app.register_blueprint(cart_bp, url_prefix="/api/cart")
-    app.register_blueprint(products_bp, url_prefix="/api/products")
-
-
     CORS(app, resources={r"/*": {"origins": "*"}})
 
-    migrate = Migrate(app, db)
-
-    # ---------------- CONFIG ----------------
+    # CONFIG
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
 
-    # ---------------- EXTENSIONS ----------------
+    # EXTENSIONS
     db.init_app(app)
     jwt.init_app(app)
 
-    # ---------------- BLUEPRINTS ----------------
-    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    migrate = Migrate(app, db)
 
-    # ---------------- TEST ROUTE ----------------
+    # BLUEPRINTS 
+    app.register_blueprint(auth_bp, url_prefix="/api/auth")
+    app.register_blueprint(cart_bp, url_prefix="/api/cart")
+    app.register_blueprint(products_bp, url_prefix="/api/products")
+
+    # TEST ROUTE
     @app.route("/")
     def home():
         return {"message": "API running successfully"}
