@@ -13,6 +13,6 @@ class CartItem(db.Model):
             "id": self.id,
             "user_id": self.user_id,
             "product_id": self.product_id,
-            "quantity": self.quantity
+            "quantity": self.quantity,
             "product": self.product.to_dict() if self.product else None
         }

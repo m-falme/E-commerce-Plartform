@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 from flask_migrate import Migrate
 from flask_cors import CORS
-from extensions import db
+from extensions import db, jwt
 from routes.auth import auth_bp   
 from routes.products import products_bp
 from routes.cart import cart_bp
@@ -25,7 +25,7 @@ def create_app():
 
     # EXTENSIONS
     db.init_app(app)
-    # jwt.init_app(app)
+    jwt.init_app(app)
 
     migrate = Migrate(app, db)
 
