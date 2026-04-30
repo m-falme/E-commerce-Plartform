@@ -1,110 +1,143 @@
-
 import { Link } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
-function Cart() {
-  const {
-    cartItems, cartTotal, cartLoading,
-    removeFromCart, updateQuantity, clearCart
-  } = useCart();
 
-  if (cartLoading) {
-    return (
-      <div style={styles.loadingPage}>
-        <div style={styles.loadingText}>Loading your cart...</div>
-      </div>
-    );
-  }
+export default function Cart() {
+  const { cart, removeFromCart, updateQuantity } = useCart();
+
+  // Calculate cart total
+  // .reduce() iterates through the array and accumulates a single value
+  // Here: start at 0, add (price × quantity) for each item
+  const total = cart.reduce((sum, item) => {
+    const price = item.product?.price || 0;
+    return sum + price * item.quantity;
+  }, 0);
 
   // Empty cart state
-  if (cartItems.length === 0) {
+  if (cart.length === 0) {
     return (
-      <div className="page-enter" style={styles.emptyPage}>
-        <div style={styles.emptyContent}>
-          <p style={{ fontSize: 64, marginBottom: 24 }}>🛒</p>
-          <h2 style={styles.emptyTitle}>Your cart is empty</h2>
-          <p style={styles.emptyText}>
-            Looks like you haven't added anything yet.
-          </p>
-          <Link to="/products" className="btn-primary" style={{ textDecoration: "none", display: "inline-block", marginTop: 24 }}>
-            Start Shopping
-          </Link>
+      <div className="page" style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        gap: "1.5rem",
+      }}>
+        <div style={{
+          fontFamily: "var(--font-display)",
+          fontSize: "4rem",
+          color: "rgba(201,168,76,0.15)",
+        }}>
+          ◇
         </div>
+        <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 300 }}>Your cart is empty</h3>
+        <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
+          Discover our curated collection
+        </p>
+        <Link to="/products" className="btn btn-gold">
+          Browse Products
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="page-enter">
-      <div className="container" style={{ padding: "48px 24px" }}>
+    <div className="page">
+      <div className="container" style={{ padding: "3rem 2rem 6rem", maxWidth: "900px" }}>
 
         {/* Header */}
-        <div style={styles.header}>
-          <div>
-            <p style={styles.eyebrow}>◆ Your Selection</p>
-            <h1 style={styles.title}>Shopping Cart</h1>
-          </div>
-          <button
-            className="btn-ghost"
-            style={{ fontSize: 12, color: "var(--text-muted)" }}
-            onClick={clearCart}
-          >
-            Clear all
-          </button>
+        <div style={{ marginBottom: "3rem" }}>
+          <p style={{ color: "var(--gold)", letterSpacing: "0.2em", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "0.5rem" }}>
+            Your Selection
+          </p>
+          <h2>Shopping Cart</h2>
+          <div className="divider" />
         </div>
 
-        <div style={styles.layout}>
-          {/* LEFT: CART ITEMS LIST */}
-          <div style={styles.itemsList}>
-            {cartItems.map(item => (
-              <CartRow
+        {/* Cart layout: items left, summary right */}
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 320px",
+          gap: "3rem",
+          alignItems: "start",
+        }}>
+
+          {/* Cart items list */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "1px" }}>
+            {cart.map((item) => (
+              <CartItemRow
                 key={item.id}
                 item={item}
                 onRemove={() => removeFromCart(item.id)}
-                onQtyChange={(qty) => updateQuantity(item.id, qty)}
+                onQuantityChange={(qty) => updateQuantity(item.id, qty)}
               />
             ))}
           </div>
 
-          {/* ── RIGHT: ORDER SUMMARY ── */}
-          <div style={styles.summary}>
-            <h2 style={styles.summaryTitle}>Order Summary</h2>
+          {/* Order summary */}
+          <div style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-md)",
+            padding: "2rem",
+            position: "sticky",
+            top: "6rem", // stays visible while scrolling
+          }}>
+            <h3 style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "1.1rem",
+              fontWeight: 400,
+              marginBottom: "1.5rem",
+              paddingBottom: "1rem",
+              borderBottom: "1px solid var(--border)",
+            }}>
+              Order Summary
+            </h3>
 
-            <div style={styles.summaryRows}>
-              <div style={styles.summaryRow}>
-                <span style={styles.summaryLabel}>Subtotal</span>
-                <span style={styles.summaryValue}>
-                  KES {cartTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </span>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                <span style={{ color: "var(--muted)" }}>Subtotal</span>
+                <span>KSh {total.toLocaleString()}</span>
               </div>
-              <div style={styles.summaryRow}>
-                <span style={styles.summaryLabel}>Shipping</span>
-                <span style={{ ...styles.summaryValue, color: "var(--gold)" }}>
-                  {cartTotal >= 5000 ? "FREE" : "KES 300"}
-                </span>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                <span style={{ color: "var(--muted)" }}>Shipping</span>
+                <span style={{ color: "var(--gold)" }}>Free</span>
               </div>
-              {cartTotal < 5000 && (
-                <p style={styles.shippingNote}>
-                  Add KES {(5000 - cartTotal).toLocaleString()} more for free shipping
-                </p>
-              )}
             </div>
 
-            <div style={styles.divider} />
-
-            <div style={styles.summaryRow}>
-              <span style={styles.totalLabel}>Total</span>
-              <span style={styles.totalValue}>
-                KES {(cartTotal + (cartTotal >= 5000 ? 0 : 300)).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              padding: "1rem 0",
+              borderTop: "1px solid var(--border)",
+              marginBottom: "1.5rem",
+            }}>
+              <span style={{ fontWeight: 500, fontSize: "0.9rem" }}>Total</span>
+              <span style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "1.5rem",
+                fontWeight: 300,
+                color: "var(--gold)",
+              }}>
+                KSh {total.toLocaleString()}
               </span>
             </div>
 
-            <button className="btn-primary" style={styles.checkoutBtn}>
+            {/* Checkout button — Stripe will hook up here later */}
+            <button className="btn btn-gold" style={{ width: "100%", fontSize: "0.85rem" }}>
               Proceed to Checkout
             </button>
 
-            <Link to="/products" style={styles.continueLink}>
-              ← Continue shopping
+            <Link to="/products" style={{
+              display: "block",
+              textAlign: "center",
+              marginTop: "1rem",
+              fontSize: "0.8rem",
+              color: "var(--muted)",
+              letterSpacing: "0.05em",
+            }}>
+              ← Continue Shopping
             </Link>
           </div>
         </div>
@@ -113,267 +146,125 @@ function Cart() {
   );
 }
 
-// CartRow is a sub-component defined in the same file.
-// It's small and only used here so no need for a separate file.
-function CartRow({ item, onRemove, onQtyChange }) {
+// CartItemRow — displays one item in the cart
+// Props: item (the cart item data), onRemove, onQuantityChange
+function CartItemRow({ item, onRemove, onQuantityChange }) {
   const product = item.product;
-  const lineTotal = product ? product.price * item.quantity : 0;
 
   return (
-    <div style={styles.row}>
-      {/* Product image */}
-      <div style={styles.rowImage}>
-        <img
-          src={product?.image_url || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120&h=120&fit=crop"}
-          alt={product?.name}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        />
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "1.5rem",
+      padding: "1.5rem 0",
+      borderBottom: "1px solid var(--border)",
+      animation: "fadeIn 0.3s ease",
+    }}>
+      {/* Product image / placeholder */}
+      <div style={{
+        width: "80px",
+        height: "80px",
+        background: "var(--surface)",
+        borderRadius: "var(--radius-sm)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+        overflow: "hidden",
+        border: "1px solid var(--border)",
+      }}>
+        {product?.image_url ? (
+          <img src={product.image_url} alt={product?.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <span style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", color: "rgba(201,168,76,0.2)" }}>
+            {product?.name?.charAt(0) || "?"}
+          </span>
+        )}
       </div>
 
-      {/* Product info */}
-      <div style={styles.rowInfo}>
-        <h3 style={styles.rowName}>{product?.name || `Product #${item.product_id}`}</h3>
-        {product?.category && (
-          <span style={styles.rowCategory}>{product.category}</span>
-        )}
-        <p style={styles.rowPrice}>KES {product?.price?.toLocaleString()}</p>
+      {/* Product details */}
+      <div style={{ flex: 1 }}>
+        <h3 style={{
+          fontFamily: "var(--font-display)",
+          fontSize: "1rem",
+          fontWeight: 400,
+          marginBottom: "0.25rem",
+        }}>
+          {product?.name || "Unknown Product"}
+        </h3>
+        <p style={{ fontSize: "0.8rem", color: "var(--muted)" }}>
+          {product?.category}
+        </p>
       </div>
 
       {/* Quantity controls */}
-      <div style={styles.qtyControls}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         <button
-          style={styles.qtyBtn}
-          onClick={() => onQtyChange(item.quantity - 1)}
-          disabled={item.quantity <= 1}
+          onClick={() => onQuantityChange(item.quantity - 1)}
+          style={{
+            width: "28px", height: "28px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--white)",
+            cursor: "pointer",
+            fontSize: "1rem",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "var(--transition)",
+          }}
         >
           −
         </button>
-        <span style={styles.qty}>{item.quantity}</span>
+        <span style={{ minWidth: "20px", textAlign: "center", fontSize: "0.9rem" }}>
+          {item.quantity}
+        </span>
         <button
-          style={styles.qtyBtn}
-          onClick={() => onQtyChange(item.quantity + 1)}
+          onClick={() => onQuantityChange(item.quantity + 1)}
+          style={{
+            width: "28px", height: "28px",
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            color: "var(--white)",
+            cursor: "pointer",
+            fontSize: "1rem",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "var(--transition)",
+          }}
         >
           +
         </button>
       </div>
 
-      {/* Line total + remove */}
-      <div style={styles.rowRight}>
-        <span style={styles.lineTotal}>
-          KES {lineTotal.toLocaleString()}
+      {/* Line total */}
+      <div style={{ textAlign: "right", minWidth: "100px" }}>
+        <span style={{
+          fontFamily: "var(--font-display)",
+          fontSize: "1.1rem",
+          fontWeight: 300,
+          color: "var(--gold)",
+        }}>
+          KSh {((product?.price || 0) * item.quantity).toLocaleString()}
         </span>
-        <button
-          style={styles.removeBtn}
-          onClick={onRemove}
-          title="Remove item"
-        >
-          ✕
-        </button>
       </div>
+
+      {/* Remove button */}
+      <button
+        onClick={onRemove}
+        style={{
+          background: "none",
+          border: "none",
+          color: "var(--muted)",
+          cursor: "pointer",
+          fontSize: "1.2rem",
+          padding: "0.25rem",
+          transition: "var(--transition)",
+          lineHeight: 1,
+        }}
+        title="Remove item"
+      >
+        ×
+      </button>
     </div>
   );
 }
-
-const styles = {
-  loadingPage: {
-    minHeight: "60vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadingText: { color: "var(--text-secondary)", fontSize: 15 },
-  emptyPage: {
-    minHeight: "70vh",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyContent: { textAlign: "center" },
-  emptyTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: 28,
-    color: "var(--text-primary)",
-    marginBottom: 12,
-  },
-  emptyText: { color: "var(--text-secondary)", fontSize: 15 },
-  header: {
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginBottom: 40,
-    flexWrap: "wrap",
-    gap: 16,
-  },
-  eyebrow: {
-    color: "var(--gold)",
-    fontSize: 12,
-    fontWeight: 600,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  title: {
-    fontFamily: "var(--font-display)",
-    fontSize: 36,
-    fontWeight: 600,
-    color: "var(--text-primary)",
-  },
-  layout: {
-    display: "grid",
-    gridTemplateColumns: "1fr 340px",
-    gap: 40,
-    alignItems: "start",
-  },
-  itemsList: { display: "flex", flexDirection: "column", gap: 16 },
-  row: {
-    display: "flex",
-    alignItems: "center",
-    gap: 20,
-    background: "var(--bg-secondary)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-md)",
-    padding: 20,
-  },
-  rowImage: {
-    width: 80, height: 80,
-    borderRadius: "var(--radius-sm)",
-    overflow: "hidden",
-    flexShrink: 0,
-    background: "var(--bg-tertiary)",
-  },
-  rowInfo: { flex: 1, minWidth: 0 },
-  rowName: {
-    fontFamily: "var(--font-display)",
-    fontSize: 16,
-    fontWeight: 600,
-    color: "var(--text-primary)",
-    marginBottom: 4,
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-  },
-  rowCategory: {
-    fontSize: 11,
-    color: "var(--gold)",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    fontWeight: 600,
-  },
-  rowPrice: {
-    fontSize: 14,
-    color: "var(--text-secondary)",
-    marginTop: 4,
-  },
-  qtyControls: {
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    background: "var(--bg-tertiary)",
-    borderRadius: "var(--radius-sm)",
-    padding: "6px 12px",
-  },
-  qtyBtn: {
-    background: "none",
-    border: "none",
-    color: "var(--text-secondary)",
-    fontSize: 18,
-    cursor: "pointer",
-    width: 24,
-    height: 24,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 4,
-    transition: "all 0.2s",
-  },
-  qty: {
-    fontSize: 15,
-    fontWeight: 600,
-    color: "var(--text-primary)",
-    minWidth: 20,
-    textAlign: "center",
-  },
-  rowRight: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-end",
-    gap: 12,
-    flexShrink: 0,
-  },
-  lineTotal: {
-    fontFamily: "var(--font-display)",
-    fontSize: 16,
-    fontWeight: 700,
-    color: "var(--gold)",
-  },
-  removeBtn: {
-    background: "none",
-    border: "none",
-    color: "var(--text-muted)",
-    cursor: "pointer",
-    fontSize: 13,
-    padding: 4,
-    transition: "color 0.2s",
-  },
-  summary: {
-    background: "var(--bg-secondary)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-lg)",
-    padding: 28,
-    position: "sticky",
-    top: 84,
-  },
-  summaryTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: 20,
-    fontWeight: 600,
-    color: "var(--text-primary)",
-    marginBottom: 24,
-  },
-  summaryRows: { display: "flex", flexDirection: "column", gap: 14 },
-  summaryRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  summaryLabel: { fontSize: 14, color: "var(--text-secondary)" },
-  summaryValue: { fontSize: 14, fontWeight: 500, color: "var(--text-primary)" },
-  shippingNote: {
-    fontSize: 12,
-    color: "var(--text-muted)",
-    fontStyle: "italic",
-  },
-  divider: {
-    height: 1,
-    background: "var(--border)",
-    margin: "20px 0",
-  },
-  totalLabel: {
-    fontSize: 16,
-    fontWeight: 600,
-    color: "var(--text-primary)",
-  },
-  totalValue: {
-    fontFamily: "var(--font-display)",
-    fontSize: 22,
-    fontWeight: 700,
-    color: "var(--gold)",
-  },
-  checkoutBtn: {
-    width: "100%",
-    padding: 16,
-    fontSize: 15,
-    marginTop: 24,
-  },
-  continueLink: {
-    display: "block",
-    textAlign: "center",
-    marginTop: 16,
-    color: "var(--text-secondary)",
-    fontSize: 13,
-    textDecoration: "none",
-    transition: "color 0.2s",
-  },
-};
-
-export default Cart;

@@ -44,7 +44,7 @@ function Login() {
     <div style={styles.page} className="page-enter">
       <div style={styles.card}>
         <div style={styles.header}>
-          <div style={styles.logo}>◆ LUXE</div>
+          <div style={styles.logo}>◆ M&M </div>
           <h1 style={styles.title}>Welcome back</h1>
           <p style={styles.subtitle}>Sign in to your account</p>
         </div>

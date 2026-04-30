@@ -1,176 +1,125 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-// Link is React Router's <a> tag — it navigates without page reload.
-// useNavigate() gives a function to redirect programmatically.
-// useLocation() tells you the current URL path (for active link styling).
 
-function Navbar() {
-  const { user, logout } = useAuth();
+export default function Navbar() {
+  const { user, logout, isLoggedIn } = useAuth();
   const { cartCount } = useCart();
   const navigate = useNavigate();
-  const location = useLocation(); // { pathname: "/products", ... }
+  const location = useLocation(); // current URL path like "/products"
+  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Listen to scroll events and update state
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll);
+    // Cleanup: remove the listener when the component unmounts (unloads)
+    // Without this, old listeners pile up and cause memory leaks
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  // Helper: is this link currently active?
+  // Helper: is this link the current page?
   const isActive = (path) => location.pathname === path;
 
   return (
-    <>
-      <nav style={styles.nav}>
-        <div style={styles.inner}>
-          {/* ── LOGO ── */}
-          <Link to="/" style={styles.logo}>
-            <span style={styles.logoIcon}>◆</span>
-            LUXE
-          </Link>
+    <nav style={{
+      position: "fixed",
+      top: 0, left: 0, right: 0,
+      zIndex: 1000,
+      padding: "1.25rem 2rem",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      // Backdrop blur creates the frosted glass effect when scrolled
+      background: scrolled ? "rgba(10,10,10,0.92)" : "transparent",
+      backdropFilter: scrolled ? "blur(12px)" : "none",
+      borderBottom: scrolled ? "1px solid #2a2a2a" : "1px solid transparent",
+      transition: "all 0.3s ease",
+    }}>
 
-          {/* ── DESKTOP LINKS ── */}
-          <div style={styles.links}>
-            <Link
-              to="/"
-              style={{ ...styles.link, ...(isActive("/") ? styles.linkActive : {}) }}
-            >
-              Home
+      {/* LOGO */}
+      <Link to="/" style={{
+        fontFamily: "var(--font-display)",
+        fontSize: "1.6rem",
+        fontWeight: 300,
+        letterSpacing: "0.15em",
+        color: "var(--white)",
+      }}>
+        M&M<span style={{ color: "var(--gold)" }}></span>
+      </Link>
+
+      {/* NAV LINKS — desktop */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2.5rem" }}>
+        <Link to="/" style={{
+          fontSize: "0.8rem",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: isActive("/") ? "var(--gold)" : "var(--muted)",
+          transition: "var(--transition)",
+          fontWeight: 400,
+        }}>Home</Link>
+
+        {isLoggedIn && (
+          <Link to="/products" style={{
+            fontSize: "0.8rem",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            color: isActive("/products") ? "var(--gold)" : "var(--muted)",
+            transition: "var(--transition)",
+            fontWeight: 400,
+          }}>Shop</Link>
+        )}
+
+        {/* AUTH LINKS */}
+        {!isLoggedIn ? (
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <Link to="/login" className="btn btn-ghost" style={{ padding: "0.5rem 1rem", fontSize: "0.8rem", letterSpacing: "0.1em" }}>
+              Login
             </Link>
-            <Link
-              to="/products"
-              style={{ ...styles.link, ...(isActive("/products") ? styles.linkActive : {}) }}
-            >
-              Shop
+            <Link to="/register" className="btn btn-gold" style={{ padding: "0.5rem 1.5rem", fontSize: "0.8rem" }}>
+              Register
             </Link>
           </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
+            {/* Welcome message */}
+            <span style={{ fontSize: "0.8rem", color: "var(--muted)", letterSpacing: "0.05em" }}>
+              {user?.username}
+            </span>
 
-          {/* ── RIGHT SIDE ACTIONS ── */}
-          <div style={styles.actions}>
-            {user ? (
-              <>
-                {/* Greeting */}
-                <span style={styles.greeting}>Hi, {user.username}</span>
+            {/* Cart icon with badge */}
+            <Link to="/cart" style={{ position: "relative", display: "flex", alignItems: "center" }}>
+              <svg width="22" height="22" fill="none" stroke={isActive("/cart") ? "var(--gold)" : "var(--muted)"} strokeWidth="1.5" viewBox="0 0 24 24">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 01-8 0"/>
+              </svg>
+              {cartCount > 0 && (
+                <span className="badge" style={{ position: "absolute", top: "-8px", right: "-8px", fontSize: "0.6rem" }}>
+                  {cartCount}
+                </span>
+              )}
+            </Link>
 
-                {/* Cart icon with live badge */}
-                <Link to="/cart" style={styles.cartBtn}>
-                  <CartIcon />
-                  {/* Only show the badge if cart has items */}
-                  {cartCount > 0 && (
-                    <span style={styles.badge}>{cartCount}</span>
-                  )}
-                </Link>
-
-                <button onClick={handleLogout} className="btn-ghost" style={{ fontSize: 13 }}>
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link to="/login" className="btn-ghost">Login</Link>
-                <Link to="/register" className="btn-primary" style={{ textDecoration: "none", padding: "10px 20px", borderRadius: 6, fontSize: 14, fontWeight: 600, background: "var(--gold)", color: "#0a0a0a" }}>
-                  Sign up
-                </Link>
-              </>
-            )}
+            {/* Logout */}
+            <button onClick={handleLogout} className="btn btn-outline" style={{
+              padding: "0.5rem 1.2rem",
+              fontSize: "0.75rem",
+              letterSpacing: "0.1em",
+            }}>
+              Logout
+            </button>
           </div>
-        </div>
-      </nav>
-      {/* Spacer so page content doesn't hide under the fixed navbar */}
-      <div style={{ height: 64 }} />
-    </>
+        )}
+      </div>
+    </nav>
   );
 }
-
-// Simple SVG cart icon — no icon library needed
-function CartIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <path d="M16 10a4 4 0 01-8 0"/>
-    </svg>
-  );
-}
-
-// Styles as JavaScript objects — called "CSS-in-JS".
-// This keeps styles close to the component that uses them.
-// Style properties use camelCase: background-color → backgroundColor
-const styles = {
-  nav: {
-    position: "fixed",        // Stays at top even when scrolling
-    top: 0, left: 0, right: 0,
-    zIndex: 100,
-    background: "rgba(10,10,10,0.85)",
-    backdropFilter: "blur(12px)", // Frosted glass effect
-    borderBottom: "1px solid var(--border)",
-    height: 64,
-  },
-  inner: {
-    maxWidth: 1280,
-    margin: "0 auto",
-    padding: "0 24px",
-    height: "100%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  logo: {
-    fontFamily: "var(--font-display)",
-    fontSize: 22,
-    fontWeight: 700,
-    color: "var(--gold)",
-    textDecoration: "none",
-    letterSpacing: 3,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  },
-  logoIcon: { fontSize: 14, opacity: 0.8 },
-  links: { display: "flex", gap: 32 },
-  link: {
-    color: "var(--text-secondary)",
-    textDecoration: "none",
-    fontSize: 14,
-    fontWeight: 500,
-    letterSpacing: 0.3,
-    transition: "color 0.2s",
-    padding: "4px 0",
-    borderBottom: "2px solid transparent",
-  },
-  linkActive: {
-    color: "var(--text-primary)",
-    borderBottomColor: "var(--gold)",
-  },
-  actions: { display: "flex", alignItems: "center", gap: 16 },
-  greeting: {
-    color: "var(--text-secondary)",
-    fontSize: 13,
-  },
-  cartBtn: {
-    position: "relative",
-    color: "var(--text-secondary)",
-    display: "flex",
-    alignItems: "center",
-    transition: "color 0.2s",
-    textDecoration: "none",
-  },
-  badge: {
-    position: "absolute",
-    top: -8, right: -8,
-    background: "var(--gold)",
-    color: "#0a0a0a",
-    borderRadius: "50%",
-    width: 18, height: 18,
-    fontSize: 11,
-    fontWeight: 700,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-};
-
-export default Navbar;

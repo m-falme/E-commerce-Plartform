@@ -1,257 +1,302 @@
-import { useEffect, useState, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
-import ProductCard from "../components/ProductCard";
+import { useEffect, useState } from "react";
 import API from "../services/api";
+import { useCart } from "../context/CartContext";
 
-// useSearchParams reads/writes URL query params like ?category=Electronics
-// This means the filter is shareable — copy the URL and it keeps the filter.
+// Products page:
+// 1. Fetches all products from Flask on load
+// 2. Lets user filter by category
+// 3. Lets user search by name
+// 4. Each product card has an "Add to Cart" button
+// 5. Shows a toast notification when item is added
 
-function Products() {
-  const [products, setProducts]     = useState([]);   // All products from API
-  const [loading, setLoading]       = useState(true);
-  const [search, setSearch]         = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [searchParams]              = useSearchParams();
+export default function Products() {
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState("");
+  const { addToCart } = useCart();
 
-  // On mount: check if URL has ?category=... (from homepage category links)
+  // Fetch products from Flask backend on first render
   useEffect(() => {
-    const cat = searchParams.get("category");
-    if (cat) setActiveCategory(cat);
-  }, []);
+    fetchProducts();
+    fetchCategories();
+  }, []); // [] = run once on mount
 
-  // Fetch all products once on mount
-  useEffect(() => {
-    API.get("/products/")
-      .then(res => setProducts(res.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+  const fetchProducts = async () => {
+    try {
+      const res = await API.get("/products/");
+      setProducts(res.data);
+    } catch (err) {
+      console.error("Failed to fetch products:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // useMemo re-calculates only when products, search, or category changes.
-  // Without useMemo it would recalculate on EVERY render — wasteful.
-  // This is a performance optimization called memoization.
-  const filtered = useMemo(() => {
-    return products.filter(p => {
-      // Check category filter
-      const matchesCategory =
-        activeCategory === "All" || p.category === activeCategory;
+  const fetchCategories = async () => {
+    try {
+      const res = await API.get("/products/categories");
+      setCategories(res.data);
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
+    }
+  };
 
-      // Check search — case-insensitive match on name or description
-      const q = search.toLowerCase();
-      const matchesSearch =
-        !q ||
-        p.name.toLowerCase().includes(q) ||
-        (p.description && p.description.toLowerCase().includes(q));
+  const handleAddToCart = async (product) => {
+    try {
+      await addToCart(product.id);
+      // Show toast notification
+      setToast(`${product.name} added to cart`);
+      // Hide it after 2.5 seconds
+      // setTimeout runs a function after a delay (in milliseconds)
+      setTimeout(() => setToast(""), 2500);
+    } catch (err) {
+      setToast("Please log in to add items");
+      setTimeout(() => setToast(""), 2500);
+    }
+  };
 
-      return matchesCategory && matchesSearch;
-    });
-  }, [products, search, activeCategory]);
+  // FILTERING — done on the frontend without extra API calls
+  // .filter() returns a new array with only items that pass the test
+  const filtered = products.filter((p) => {
+    const matchCategory = selectedCategory === "all" || p.category === selectedCategory;
+    // .toLowerCase() makes search case-insensitive
+    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
+    return matchCategory && matchSearch;
+  });
 
-  // Build category list from actual products (no hardcoding)
-  // Set removes duplicates, spread converts back to array
-  const categories = ["All", ...new Set(
-    products.map(p => p.category).filter(Boolean)
-  )];
+  if (loading) {
+    return (
+      <div className="page" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: "var(--muted)", letterSpacing: "0.2em", fontSize: "0.85rem", textTransform: "uppercase" }}>
+          Loading collection...
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="page-enter">
-      <div className="container" style={{ padding: "48px 24px" }}>
+    <div className="page">
+      <div className="container" style={{ padding: "3rem 2rem 6rem" }}>
 
-        {/* ── PAGE HEADER ── */}
-        <div style={styles.header}>
-          <div>
-            <p style={styles.eyebrow}>◆ Our Collection</p>
-            <h1 style={styles.title}>All Products</h1>
-          </div>
-          <p style={styles.count}>
-            {loading ? "Loading..." : `${filtered.length} items`}
+        {/* Page header */}
+        <div style={{ marginBottom: "3rem" }}>
+          <p style={{ color: "var(--gold)", letterSpacing: "0.2em", fontSize: "0.75rem", textTransform: "uppercase", marginBottom: "0.5rem" }}>
+            Our Collection
           </p>
+          <h2 style={{ marginBottom: "0.5rem" }}>Shop All Products</h2>
+          <div className="divider" />
         </div>
 
-        {/* ── SEARCH BAR ── */}
-        <div style={styles.searchWrap}>
-          <span style={styles.searchIcon}>⌕</span>
+        {/* Search + Filter bar */}
+        <div style={{
+          display: "flex",
+          gap: "1rem",
+          marginBottom: "3rem",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}>
+          {/* Search input */}
           <input
             className="input"
-            style={styles.searchInput}
             type="text"
             placeholder="Search products..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            style={{ maxWidth: "300px" }}
           />
-          {search && (
-            <button
-              style={styles.clearBtn}
-              onClick={() => setSearch("")}
-            >
-              ✕
-            </button>
-          )}
-        </div>
 
-        {/* ── CATEGORY FILTERS ── */}
-        {!loading && categories.length > 1 && (
-          <div style={styles.filters}>
-            {categories.map(cat => (
+          {/* Category filter buttons */}
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            {["all", ...categories].map((cat) => (
               <button
                 key={cat}
+                onClick={() => setSelectedCategory(cat)}
                 style={{
-                  ...styles.filterBtn,
-                  ...(activeCategory === cat ? styles.filterBtnActive : {}),
+                  padding: "0.5rem 1.2rem",
+                  fontSize: "0.75rem",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  background: selectedCategory === cat ? "var(--gold)" : "transparent",
+                  color: selectedCategory === cat ? "var(--black)" : "var(--muted)",
+                  border: "1px solid",
+                  borderColor: selectedCategory === cat ? "var(--gold)" : "var(--border)",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: "pointer",
+                  transition: "var(--transition)",
+                  fontFamily: "var(--font-body)",
                 }}
-                onClick={() => setActiveCategory(cat)}
               >
-                {cat}
+                {cat === "all" ? "All" : cat}
               </button>
             ))}
           </div>
-        )}
 
-        {/* ── PRODUCT GRID ── */}
-        {loading ? (
-          <div style={styles.grid}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} style={styles.skeletonCard}>
-                <div className="skeleton" style={{ height: 240 }} />
-                <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div className="skeleton" style={{ height: 20, width: "70%" }} />
-                  <div className="skeleton" style={{ height: 14, width: "90%" }} />
-                  <div className="skeleton" style={{ height: 36, marginTop: 8 }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filtered.length > 0 ? (
-          <div style={styles.grid}>
-            {filtered.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+          {/* Result count */}
+          <span style={{ fontSize: "0.8rem", color: "var(--muted)", marginLeft: "auto" }}>
+            {filtered.length} items
+          </span>
+        </div>
+
+        {/* Product grid */}
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "4rem 0" }}>
+            <p style={{ color: "var(--muted)" }}>No products found</p>
           </div>
         ) : (
-          <div style={styles.empty}>
-            <p style={{ fontSize: 40, marginBottom: 16 }}>🔍</p>
-            <h3 style={styles.emptyTitle}>No products found</h3>
-            <p style={styles.emptyText}>
-              Try a different search term or category.
-            </p>
-            <button
-              className="btn-outline"
-              style={{ marginTop: 20 }}
-              onClick={() => { setSearch(""); setActiveCategory("All"); }}
-            >
-              Clear filters
-            </button>
+          <div style={{
+            display: "grid",
+            // auto-fit + minmax = responsive grid without media queries
+            // Each column is at least 280px wide, fills available space
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "1.5rem",
+          }} className="stagger">
+            {filtered.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAddToCart={() => handleAddToCart(product)}
+              />
+            ))}
           </div>
         )}
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="toast">
+          <span style={{ color: "var(--gold)", marginRight: "0.5rem" }}>✓</span>
+          {toast}
+        </div>
+      )}
     </div>
   );
 }
 
-const styles = {
-  header: {
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-between",
-    marginBottom: 32,
-    flexWrap: "wrap",
-    gap: 16,
-  },
-  eyebrow: {
-    color: "var(--gold)",
-    fontSize: 12,
-    fontWeight: 600,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    marginBottom: 8,
-  },
-  title: {
-    fontFamily: "var(--font-display)",
-    fontSize: 40,
-    fontWeight: 600,
-    color: "var(--text-primary)",
-  },
-  count: {
-    color: "var(--text-muted)",
-    fontSize: 14,
-    paddingBottom: 8,
-  },
-  searchWrap: {
-    position: "relative",
-    marginBottom: 24,
-  },
-  searchIcon: {
-    position: "absolute",
-    left: 16,
-    top: "50%",
-    transform: "translateY(-50%)",
-    color: "var(--text-muted)",
-    fontSize: 20,
-    pointerEvents: "none",
-  },
-  searchInput: {
-    paddingLeft: 48,
-    paddingRight: 40,
-  },
-  clearBtn: {
-    position: "absolute",
-    right: 14,
-    top: "50%",
-    transform: "translateY(-50%)",
-    background: "none",
-    border: "none",
-    color: "var(--text-muted)",
-    cursor: "pointer",
-    fontSize: 14,
-    padding: 4,
-  },
-  filters: {
-    display: "flex",
-    gap: 10,
-    flexWrap: "wrap",
-    marginBottom: 32,
-  },
-  filterBtn: {
-    background: "transparent",
-    border: "1px solid var(--border)",
-    color: "var(--text-secondary)",
-    padding: "8px 18px",
-    borderRadius: 20,
-    fontSize: 13,
-    cursor: "pointer",
-    transition: "all 0.2s",
-    fontFamily: "var(--font-body)",
-    fontWeight: 500,
-  },
-  filterBtnActive: {
-    background: "var(--gold-dim)",
-    borderColor: "var(--gold)",
-    color: "var(--gold)",
-  },
-  grid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
-    gap: 24,
-  },
-  skeletonCard: {
-    background: "var(--bg-card)",
-    border: "1px solid var(--border)",
-    borderRadius: "var(--radius-md)",
-    overflow: "hidden",
-  },
-  empty: {
-    textAlign: "center",
-    padding: "80px 24px",
-    border: "1px dashed var(--border)",
-    borderRadius: "var(--radius-lg)",
-  },
-  emptyTitle: {
-    fontFamily: "var(--font-display)",
-    fontSize: 22,
-    color: "var(--text-primary)",
-    marginBottom: 8,
-  },
-  emptyText: { color: "var(--text-secondary)", fontSize: 14 },
-};
+function ProductCard({ product, onAddToCart }) {
+  // Placeholder image using a color based on product id
+  // When you add real image_url to your products, replace this
+  const colors = ["#1a1a2e", "#16213e", "#1a2a1a", "#2e1a1a", "#1a1a2e"];
+  const bgColor = colors[product.id % colors.length];
 
-export default Products;
+  return (
+    <div className="card fade-up" style={{ display: "flex", flexDirection: "column" }}>
+      {/* Product image area */}
+      <div style={{
+        height: "220px",
+        background: bgColor,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        position: "relative",
+        overflow: "hidden",
+      }}>
+        {product.image_url ? (
+          <img
+            src={product.image_url}
+            alt={product.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        ) : (
+          <div style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "3rem",
+            color: "rgba(201,168,76,0.15)",
+            userSelect: "none",
+          }}>
+            {product.name.charAt(0)}
+          </div>
+        )}
+        {/* Category badge */}
+        {product.category && (
+          <span style={{
+            position: "absolute",
+            top: "1rem",
+            left: "1rem",
+            padding: "0.25rem 0.75rem",
+            background: "rgba(0,0,0,0.6)",
+            border: "1px solid var(--border)",
+            borderRadius: "99px",
+            fontSize: "0.65rem",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            color: "var(--muted)",
+          }}>
+            {product.category}
+          </span>
+        )}
+        {/* Out of stock overlay */}
+        {product.stock === 0 && (
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(0,0,0,0.7)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}>
+            <span style={{ color: "var(--muted)", letterSpacing: "0.2em", fontSize: "0.75rem", textTransform: "uppercase" }}>
+              Out of Stock
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Product info */}
+      <div style={{ padding: "1.5rem", flex: 1, display: "flex", flexDirection: "column" }}>
+        <h3 style={{
+          fontFamily: "var(--font-display)",
+          fontSize: "1.1rem",
+          fontWeight: 400,
+          marginBottom: "0.4rem",
+          color: "var(--white)",
+        }}>
+          {product.name}
+        </h3>
+
+        {product.description && (
+          <p style={{
+            fontSize: "0.82rem",
+            color: "var(--muted)",
+            lineHeight: 1.6,
+            marginBottom: "1rem",
+            flex: 1,
+            // Clamp to 2 lines with ellipsis for overflow
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}>
+            {product.description}
+          </p>
+        )}
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
+          <span style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "1.4rem",
+            fontWeight: 300,
+            color: "var(--gold)",
+          }}>
+            KSh {product.price.toLocaleString()}
+          </span>
+
+          <button
+            className="btn btn-outline"
+            onClick={onAddToCart}
+            disabled={product.stock === 0}
+            style={{
+              padding: "0.5rem 1.2rem",
+              fontSize: "0.75rem",
+              opacity: product.stock === 0 ? 0.4 : 1,
+            }}
+          >
+            Add to Cart
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

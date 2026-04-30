@@ -67,7 +67,7 @@ function Register() {
       <div style={styles.card}>
         {/* Header */}
         <div style={styles.header}>
-          <div style={styles.logo}>◆ LUXE</div>
+          <div style={styles.logo}>◆ M&M</div>
           <h1 style={styles.title}>Create account</h1>
           <p style={styles.subtitle}>Join us for an exclusive experience</p>
         </div>
